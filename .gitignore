@@ -1,0 +1,10 @@
+# Builds
+*.d
+*.o
+
+*.log
+
+# Binary
+fp
+
+*.tgz
