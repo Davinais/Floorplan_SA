@@ -99,21 +99,23 @@ PlaceStatus Floorplanner::placeAt(BStarTreeNode *parent, BStarTreeNode *current,
     bool rotate = false;
     auto curr_block = __block_array[current->get_blk_id()];
     if (parent == nullptr) {
-        if (curr_block->getWidth(rotate) <= __outline_width && curr_block->getWidth(rotate) <= __outline_height) {
+        curr_block->setRotate(rotate);
+        if (curr_block->getWidth() <= __outline_width && curr_block->getWidth() <= __outline_height) {
             __tree_root = current;
-            curr_block->setPos(0, 0, curr_block->getWidth(rotate), curr_block->getHeight(rotate));
+            curr_block->setPos(0, 0, curr_block->getWidth(), curr_block->getHeight());
             update_contour(curr_block);
             return PlaceStatus::SUCCESS;
         }
         else {
-            rotate = !rotate;
-            if (curr_block->getWidth(rotate) <= __outline_width && curr_block->getWidth(rotate) <= __outline_height) {
+            curr_block->setRotate(!rotate);
+            if (curr_block->getWidth() <= __outline_width && curr_block->getWidth() <= __outline_height) {
                 __tree_root = current;
-                curr_block->setPos(0, 0, curr_block->getWidth(rotate), curr_block->getHeight(rotate));
+                curr_block->setPos(0, 0, curr_block->getWidth(), curr_block->getHeight());
                 update_contour(curr_block);
                 return PlaceStatus::ROTATED;
             }
             else {
+                curr_block->setRotate(rotate);
                 return PlaceStatus::FAIL;
             }
         }
@@ -121,9 +123,9 @@ PlaceStatus Floorplanner::placeAt(BStarTreeNode *parent, BStarTreeNode *current,
     else {
         auto parent_block = __block_array[parent->get_blk_id()];
         size_t x1 = (child == NodeChild::LEFT) ? parent_block->getX2() : parent_block->getX1();
-        size_t x2 = x1 + curr_block->getWidth(rotate);
+        size_t x2 = x1 + curr_block->getWidth();
         size_t y1 = find_max_y(x1, x2);
-        size_t y2 = y1 + curr_block->getHeight(rotate);
+        size_t y2 = y1 + curr_block->getHeight();
         if (!check || (x2 <= __outline_width && y2 <= __outline_height)) {
             parent->insert(current, child);
             curr_block->setPos(x1, y1, x2, y2);
@@ -131,10 +133,10 @@ PlaceStatus Floorplanner::placeAt(BStarTreeNode *parent, BStarTreeNode *current,
             return PlaceStatus::SUCCESS;
         }
         else {
-            rotate = !rotate;
-            x2 = x1 + curr_block->getWidth(rotate);
+            curr_block->setRotate(!rotate);
+            x2 = x1 + curr_block->getWidth();
             y1 = find_max_y(x1, x2);
-            y2 = y1 + curr_block->getHeight(rotate);
+            y2 = y1 + curr_block->getHeight();
             if (x2 <= __outline_width && y2 <= __outline_height) {
                 parent->insert(current, child);
                 curr_block->setPos(x1, y1, x2, y2);
@@ -142,6 +144,7 @@ PlaceStatus Floorplanner::placeAt(BStarTreeNode *parent, BStarTreeNode *current,
                 return PlaceStatus::ROTATED;
             }
             else {
+                curr_block->setRotate(rotate);
                 return PlaceStatus::FAIL;
             }
         }

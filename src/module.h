@@ -41,14 +41,15 @@ class Block : public Terminal
 public:
     // constructor and destructor
     Block(std::string& name, size_t w, size_t h, int id) :
-        Terminal(name, 0, 0), _w(w), _h(h), __node(id) {
+        Terminal(name, 0, 0), _w(w), _h(h), __rotate(false), __node(id) {
             setPos(0, 0, w, h);
         }
     ~Block() { }
 
     // basic access methods
-    const size_t getWidth(bool rotate = false)  { return rotate? _h: _w; }
-    const size_t getHeight(bool rotate = false) { return rotate? _w: _h; }
+    const size_t getWidth()  { return __rotate? _h: _w; }
+    const size_t getHeight() { return __rotate? _w: _h; }
+    const bool getRotate()  { return __rotate; }
     const size_t getArea()  { return _h * _w; }
     static size_t getMaxX() { return _maxX; }
     static size_t getMaxY() { return _maxY; }
@@ -58,6 +59,7 @@ public:
     // set functions
     void setWidth(size_t w)         { _w = w; }
     void setHeight(size_t h)        { _h = h; }
+    void setRotate(bool rotate)     { __rotate = rotate; }
     static void setMaxX(size_t x)   { _maxX = x; }
     static void setMaxY(size_t y)   { _maxY = y; }
 
@@ -67,6 +69,7 @@ public:
 private:
     size_t          _w;         // width of the block
     size_t          _h;         // height of the block
+    bool            __rotate;
     static size_t   _maxX;      // maximum x coordinate for all blocks
     static size_t   _maxY;      // maximum y coordinate for all blocks
 
