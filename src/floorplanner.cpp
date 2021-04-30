@@ -4,6 +4,8 @@
 #include <iostream>
 #include <list>
 #include <memory>
+#include <random>
+#include <stack>
 #include <vector>
 #include "module.h"
 #include "floorplanner.h"
@@ -213,8 +215,134 @@ void Floorplanner::clear_contour() {
     __horizontal_contour.clear();
 }
 
+void Floorplanner::remove_block_from_tree(const shared_ptr<Block>& block) {
+    auto node = block->getNode();
+
+    uniform_int_distribution<int> dist(0, 1);
+    int rand_num = dist(__rng);
+    assert(__tree_root->get_parent() == nullptr);
+    while (node->get_left() != nullptr && node->get_right() != nullptr) {
+        if (rand_num == 0) {
+            swap_block(block, __block_array[node->get_left()->get_blk_id()]);
+        }
+        else {
+            swap_block(block, __block_array[node->get_right()->get_blk_id()]);
+        }
+        rand_num = dist(__rng);
+    }
+    if (node == __tree_root) {
+        __tree_root = (node->get_left() != nullptr) ? node->get_left() : node->get_right();
+    }
+    node->isolate();
+    assert(__tree_root->get_parent() == nullptr);
+}
+
+void Floorplanner::random_insert(const shared_ptr<Block>& block) {
+    uniform_int_distribution<int> dist_idx(0, __num_blocks-1);
+    uniform_int_distribution<int> dist_child(0, 1);
+
+    // If dist_idx get the index of the block itself, insert at root
+    auto node = block->getNode();
+    int ins_idx = dist_idx(__rng);
+    NodeChild child = (dist_child(__rng) == 0) ? NodeChild::LEFT : NodeChild::RIGHT;
+    if (node->get_blk_id() == ins_idx) {
+        __tree_root->replace_parent(node);
+        if (__tree_root->get_left() != nullptr) {
+            __tree_root->get_left()->replace_parent(node);
+        }
+        node->replace_child(__tree_root, NodeChild::RIGHT);
+        node->replace_child(__tree_root->get_left(), NodeChild::LEFT);
+        __tree_root->replace_child(nullptr, NodeChild::LEFT);
+        BStarTreeNode::check_valid(node);
+        BStarTreeNode::check_valid(__tree_root);
+        __tree_root = node;
+    }
+    else {
+        auto ins_node = __block_array[ins_idx]->getNode();
+        if (child == NodeChild::LEFT) {
+            if(ins_node->get_left() != nullptr) {
+                ins_node->get_left()->replace_parent(node);
+                node->replace_child(ins_node->get_left(), child);
+            }
+        }
+        else {
+            if(ins_node->get_right() != nullptr) {
+                ins_node->get_right()->replace_parent(node);
+                node->replace_child(ins_node->get_right(), child);
+            }
+        }
+        node->replace_parent(ins_node);
+        ins_node->replace_child(node, child);
+        BStarTreeNode::check_valid(node);
+        BStarTreeNode::check_valid(ins_node);
+    }
+}
+
+void Floorplanner::random_operations() {
+    uniform_int_distribution<int> dist_idx(0, __num_blocks-1);
+    uniform_int_distribution<int> dist_ops(0, 2);
+    int idx_1 = dist_idx(__rng);
+    int idx_2 = dist_idx(__rng);
+    switch(dist_ops(__rng)) {
+        case 0:
+            __block_array[idx_1]->rotate();
+            break;
+        case 1:
+            remove_block_from_tree(__block_array[idx_1]);
+            random_insert(__block_array[idx_1]);
+            break;
+        case 2:
+        default:
+            while (idx_1 == idx_2) {
+                idx_2 = dist_idx(__rng);
+            }
+            swap_block(__block_array[idx_1], __block_array[idx_2]);
+            break;
+    }
+}
+
+void Floorplanner::update_all_blocks() {
+    clear_contour();
+    stack<BStarTreeNode *> workspace;
+    size_t blk_num = 0;
+    if (__tree_root != nullptr) {
+        workspace.push(__tree_root);
+    }
+    while(!workspace.empty()) {
+        BStarTreeNode *curr = workspace.top();
+        workspace.pop();
+        blk_num++;
+        if (curr->get_right() != nullptr) {
+            workspace.push(curr->get_right());
+        }
+        if (curr->get_left() != nullptr) {
+            workspace.push(curr->get_left());
+        }
+        auto& curr_block = __block_array[curr->get_blk_id()];
+        if (curr->get_parent() != nullptr) {
+            auto& parent_block = __block_array[curr->get_parent()->get_blk_id()];
+            size_t x1 = (curr->get_parent()->get_left() == curr) ? parent_block->getX2() : parent_block->getX1();
+            size_t x2 = x1 + curr_block->getWidth();
+            size_t y1 = find_max_y(x1, x2);
+            size_t y2 = y1 + curr_block->getHeight();
+            curr_block->setPos(x1, y1, x2, y2);
+        }
+        else {
+            curr_block->setPos(0, 0, curr_block->getWidth(), curr_block->getHeight());
+        }
+        update_contour(curr_block);
+    }
+    assert(blk_num == __num_blocks);
+}
+
 void Floorplanner::floorplan() {
     getInitialFloorplan();
+    __updateBestTree();
+    update_all_blocks();
+    for(int i =0; i < 100000; i++) {
+        random_operations();
+        update_all_blocks();
+    }
 }
 
 void Floorplanner::getInitialFloorplan() {
@@ -258,4 +386,18 @@ void Floorplanner::getInitialFloorplan() {
         prev_level_start = level_start;
         level_start = level_start->get_right();
     }
+}
+
+void Floorplanner::__updateBestTree() {
+    for(auto& block : __block_array) {
+        block->updateBestNode();
+    }
+    __best_tree_root = __block_array[__tree_root->get_blk_id()]->getBestNode();
+}
+
+void Floorplanner::__restoreBestTree() {
+    for(auto& block : __block_array) {
+        block->restoreBestNode();
+    }
+    __tree_root = __block_array[__best_tree_root->get_blk_id()]->getNode();
 }

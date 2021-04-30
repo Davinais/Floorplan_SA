@@ -36,7 +36,7 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    Floorplanner fp(input_blk, input_net);
+    Floorplanner fp(alpha, input_blk, input_net);
     fp.floorplan();
 
     return 0;
