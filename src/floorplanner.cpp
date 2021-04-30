@@ -209,6 +209,12 @@ void Floorplanner::update_contour(const shared_ptr<Block>& block) {
             __horizontal_contour.emplace_back(unique_ptr<Coordinate>(new Coordinate {x2, 0}));
         }
     }
+    if (Block::getMaxX() < x2) {
+        Block::setMaxX(x2);
+    }
+    if (Block::getMaxY() < y2) {
+        Block::setMaxY(y2);
+    }
 }
 
 void Floorplanner::clear_contour() {
@@ -244,6 +250,9 @@ void Floorplanner::random_insert(const shared_ptr<Block>& block) {
     // If dist_idx get the index of the block itself, insert at root
     auto node = block->getNode();
     int ins_idx = dist_idx(__rng);
+    while(node->get_blk_id() == ins_idx) {
+        ins_idx = dist_idx(__rng);
+    }
     NodeChild child = (dist_child(__rng) == 0) ? NodeChild::LEFT : NodeChild::RIGHT;
     if (node->get_blk_id() == ins_idx) {
         __tree_root->replace_parent(node);
@@ -303,6 +312,9 @@ void Floorplanner::random_operations() {
 
 void Floorplanner::update_all_blocks() {
     clear_contour();
+    Block::setMaxX(0);
+    Block::setMaxY(0);
+
     stack<BStarTreeNode *> workspace;
     size_t blk_num = 0;
     if (__tree_root != nullptr) {
@@ -339,9 +351,82 @@ void Floorplanner::floorplan() {
     getInitialFloorplan();
     __updateBestTree();
     update_all_blocks();
-    for(int i =0; i < 100000; i++) {
+    cout << "[Init] Max(" << Block::getMaxX() << ", " << Block::getMaxY() << ")" << endl;
+    simNormValue();
+    __restoreBestTree();
+    simulateAnnealing();
+    __restoreBestTree();
+    update_all_blocks();
+}
+
+double Floorplanner::calcHPWL() {
+    double hpwl = 0.0;
+    for(auto& net : __net_array) {
+        hpwl += net->calcHPWL();
+    }
+    return hpwl;
+}
+
+double Floorplanner::calcTreeCost() {
+    double penalty = checkLegal() ? 1.0 : 10.0;
+    double cost =
+        (__alpha * ((Block::getMaxX()*Block::getMaxY())/__area_norm)) +
+        ((1 - __alpha) * (calcHPWL()/__hpwl_norm));// +
+        //(penalty * abs((Block::getMaxX()/(double)Block::getMaxY()) - (__outline_width/(double)__outline_height)));
+    return cost;
+}
+
+void Floorplanner::simNormValue() {
+    const int sim_time = 50;
+    __area_norm = 0.0;
+    __hpwl_norm = 0.0;
+    for(int i =0; i < sim_time; i++) {
         random_operations();
         update_all_blocks();
+        // cout << "[" << i << "] Max(" << Block::getMaxX() << ", " << Block::getMaxY() << ")" << endl;
+        __area_norm += (double)(Block::getMaxX() * Block::getMaxY());
+        __hpwl_norm += calcHPWL();
+    }
+    __area_norm /= sim_time;
+    __hpwl_norm /= sim_time;
+    cout << "[Final] A_norm: " << __area_norm << " / HPWL_norm: " << __hpwl_norm << endl; 
+}
+
+void Floorplanner::simulateAnnealing() {
+    const int sim_time = 100;
+    const double reduce_rate = 0.999;
+    const double frozen_temp = 0.01;
+    double temperature = 1.0;
+    uniform_real_distribution<double> dist_prob(0.0, 1.0);
+    __best_tree_cost = calcTreeCost();
+
+    double new_cost, delta;
+    double prev_cost = __best_tree_cost;
+    while (temperature > frozen_temp) {
+        __restoreBestTree();
+        for (int i = 0; i < sim_time; i++) {
+            random_operations();
+            update_all_blocks();
+            new_cost = calcTreeCost();
+            delta = new_cost - prev_cost;
+            if (delta <= 0) {
+                prev_cost = new_cost;
+                __updatePrevTree();
+                if (new_cost < __best_tree_cost) {
+                    cout << "Best: " << new_cost << " / Valid=" << checkLegal() << endl;
+                    __best_tree_cost = new_cost;
+                    __updateBestTree();
+                }
+            }
+            // else if (dist_prob(__rng) > exp(-delta/temperature)) {
+            //     prev_cost = new_cost;
+            //     __updatePrevTree();
+            // }
+            else {
+                __restorePrevTree();
+            }
+        }
+        temperature *= reduce_rate;
     }
 }
 
@@ -386,6 +471,20 @@ void Floorplanner::getInitialFloorplan() {
         prev_level_start = level_start;
         level_start = level_start->get_right();
     }
+}
+
+void Floorplanner::__updatePrevTree() {
+    for(auto& block : __block_array) {
+        block->updatePrevNode();
+    }
+    __prev_tree_root = __block_array[__tree_root->get_blk_id()]->getPrevNode();
+}
+
+void Floorplanner::__restorePrevTree() {
+    for(auto& block : __block_array) {
+        block->restorePrevNode();
+    }
+    __tree_root = __block_array[__prev_tree_root->get_blk_id()]->getNode();
 }
 
 void Floorplanner::__updateBestTree() {

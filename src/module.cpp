@@ -3,6 +3,9 @@
 #include "module.h"
 using namespace std;
 
+size_t Block::_maxX = 0;
+size_t Block::_maxY = 0;
+
 double Net::calcHPWL() {
     size_t min_x = SIZE_MAX, max_x = 0;
     size_t min_y = SIZE_MAX, max_y = 0;

@@ -41,7 +41,7 @@ class Block : public Terminal
 public:
     // constructor and destructor
     Block(std::string& name, size_t w, size_t h, int id) :
-        Terminal(name, 0, 0), _w(w), _h(h), __rotate(false), __node(id), __best_node(id) {
+        Terminal(name, 0, 0), _w(w), _h(h), __rotate(false), __node(id), __prev_node(id), __best_node(id) {
             setPos(0, 0, w, h);
         }
     ~Block() { }
@@ -55,6 +55,7 @@ public:
     static size_t getMaxY() { return _maxY; }
 
     BStarTreeNode *getNode() { return &__node; }
+    BStarTreeNode *getPrevNode() { return &__prev_node; }
     BStarTreeNode *getBestNode() { return &__best_node; }
 
     // set functions
@@ -66,6 +67,14 @@ public:
 
     void rotate()                   { __rotate = !__rotate; }
     void setNode(BStarTreeNode node) { __node = node; }
+    void restorePrevNode() {
+        __rotate = __prev_rotate;
+        __node = __prev_node;
+    }
+    void updatePrevNode() {
+        __prev_rotate = __rotate;
+        __prev_node = __node;
+    }
     void restoreBestNode() {
         __rotate = __best_rotate;
         __node = __best_node;
@@ -79,11 +88,13 @@ private:
     size_t          _w;         // width of the block
     size_t          _h;         // height of the block
     bool            __rotate;
+    bool            __prev_rotate;
     bool            __best_rotate;
     static size_t   _maxX;      // maximum x coordinate for all blocks
     static size_t   _maxY;      // maximum y coordinate for all blocks
 
     BStarTreeNode __node;
+    BStarTreeNode __prev_node;
     BStarTreeNode __best_node;
 };
 

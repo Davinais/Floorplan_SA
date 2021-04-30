@@ -24,7 +24,8 @@ struct Coordinate {
 class Floorplanner {
     public:
         Floorplanner(double alpha, std::fstream& in_blk, std::fstream& in_net):
-            __alpha(alpha), __tree_root(nullptr), __best_tree_root(nullptr), __rng(12345) {
+            __alpha(alpha), __tree_root(nullptr), __prev_tree_root(nullptr), __best_tree_root(nullptr),
+            __best_tree_cost(0.0), __area_norm(0.0), __hpwl_norm(), __rng(12345) {
             parseBlk(in_blk);
             parseNet(in_net);
         }
@@ -34,6 +35,13 @@ class Floorplanner {
         void getInitialFloorplan();
         void parseBlk(std::fstream& in_blk);
         void parseNet(std::fstream& in_net);
+        double calcHPWL();
+        double calcTreeCost();
+        bool checkLegal() {
+            return (Block::getMaxX() <= __outline_width && Block::getMaxY() <= __outline_height);
+        }
+        void simNormValue();
+        void simulateAnnealing();
 
         PlaceStatus placeAt(BStarTreeNode *parent, BStarTreeNode *current, NodeChild child, bool check=true);
         size_t find_max_y(size_t x1, size_t x2);
@@ -61,6 +69,9 @@ class Floorplanner {
         int __num_terminals;                // Terminals Num
         int __num_nets;                     // Nets Num
 
+        double __area_norm;
+        double __hpwl_norm;
+
         std::mt19937 __rng;
 
         std::vector<std::unique_ptr<Net>> __net_array;           // net array of the circuit
@@ -71,11 +82,16 @@ class Floorplanner {
 
         BStarTreeNode *__tree_root;
         /* Careful that the __best_tree_root cannot be traversed since the pointer it stored is pointed to original nodes */
+        BStarTreeNode *__prev_tree_root;
         BStarTreeNode *__best_tree_root;
+        double __tree_cost;
+        double __best_tree_cost;
 
         std::list<std::unique_ptr<Coordinate>> __horizontal_contour;
         // std::list<std::unique_ptr<Coordinate>> __vertical_contour;
 
+        void __updatePrevTree();
+        void __restorePrevTree();
         void __updateBestTree();
         void __restoreBestTree();
 };
