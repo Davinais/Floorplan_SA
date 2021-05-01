@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cassert>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <list>
@@ -528,4 +529,49 @@ void Floorplanner::printSummary(fstream& out_log, double exe_time) {
                 << block->getX2() << " "
                 << block->getY2() << endl;
     }
+}
+
+void Floorplanner::plot(string file_name) {
+	string plot_dir = "plot";
+    string cmd;
+    bool ret;
+    cmd = "mkdir -p " + plot_dir;
+    ret = system(cmd.c_str());
+	char data_path[] = "/tmp/gnuplotXXXXXX";
+    int fd_data = mkstemp(data_path);
+    ofstream data_file(data_path);
+
+	char gp_path[] = "/tmp/gnuplotXXXXXX";
+    int fd_gp = mkstemp(gp_path);
+    ofstream gnu_file(gp_path);
+    
+    // plot blocks
+    int i = 0;
+    for(auto& block : __block_array){
+        size_t x1 = block->getX1();
+        size_t x2 = block->getX2();
+        size_t y1 = block->getY1();
+        size_t y2 = block->getY2();
+        data_file << x1 << " " << y1 << endl;
+        data_file << x2 << " " << y2 << endl;
+        gnu_file << "set object "  <<  i+1  <<  " rect from " << x1 << "," << y1 << " to " << x2 << "," << y2 << " fillcolor lt 2 linewidth 3" << endl;
+        gnu_file << "set label '" << block->getName() << "' at " << (x1+x2)/2 << "," << (y1+y2)/2 << " front center font ',40'" << endl;
+        i++;
+    }
+
+    // plot outline
+    data_file<< __outline_width << " " << __outline_height << endl;
+    gnu_file << "set arrow from 0," << __outline_height << " to " << __outline_width << "," << __outline_height << " nohead lc 3 lw 5" << endl;
+    gnu_file << "set arrow from " << __outline_width << ",0 to " << __outline_width << "," << __outline_height << " nohead lc 3 lw 5" << endl;
+    gnu_file << "set term png size 2000,2000" <<endl;
+    gnu_file << "set output '" << plot_dir << "/" <<file_name << "'" << endl;
+    gnu_file << "plot '" << data_path << "' using 1:2 with points" << endl;
+    data_file.close();
+    gnu_file.close();
+    cmd = "gnuplot " + string(gp_path);
+    
+    ret = system(cmd.c_str());
+    cout<< "Plot saved in " << plot_dir << "/" << file_name << endl;
+    remove(data_path);
+    remove(gp_path);
 }

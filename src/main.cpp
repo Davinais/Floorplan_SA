@@ -43,6 +43,7 @@ int main(int argc, char** argv)
     auto stop = chrono::high_resolution_clock::now();
     chrono::duration<double> exe_time = stop - start;
     fp.printSummary(output, exe_time.count());
+    fp.plot("best.png");
 
     return 0;
 }

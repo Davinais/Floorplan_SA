@@ -34,6 +34,7 @@ class Floorplanner {
 
         void floorplan();
         void getInitialFloorplan();
+        void plot(std::string file_name);
         void printSummary(std::fstream& out_log, double exe_time);
         void parseBlk(std::fstream& in_blk);
         void parseNet(std::fstream& in_net);
