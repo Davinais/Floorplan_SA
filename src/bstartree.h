@@ -22,6 +22,7 @@ public:
         __parent = other.__parent;
         __left = other.__left;
         __right = other.__right;
+        return *this;
     }
 
     int get_blk_id() { return __blk_id; }
