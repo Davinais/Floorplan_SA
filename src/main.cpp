@@ -1,4 +1,5 @@
 #include <iostream>
+#include <chrono>
 #include <fstream>
 #include <vector>
 #include "floorplanner.h"
@@ -36,8 +37,12 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    auto start = chrono::high_resolution_clock::now();
     Floorplanner fp(alpha, input_blk, input_net);
     fp.floorplan();
+    auto stop = chrono::high_resolution_clock::now();
+    chrono::duration<double> exe_time = stop - start;
+    fp.printSummary(output, exe_time.count());
 
     return 0;
 }

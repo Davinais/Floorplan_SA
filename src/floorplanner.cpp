@@ -512,3 +512,20 @@ void Floorplanner::__restoreBestTree() {
     }
     __tree_root = __block_array[__best_tree_root->get_blk_id()]->getNode();
 }
+
+void Floorplanner::printSummary(fstream& out_log, double exe_time) {
+    double area = Block::getMaxX()*Block::getMaxY();
+    double hpwl = calcHPWL();
+    out_log << __alpha*area + (1-__alpha)*hpwl << endl;
+    out_log << hpwl << endl;
+    out_log << area << endl;
+    out_log << Block::getMaxX() << " " << Block::getMaxY() << endl;
+    out_log << exe_time << endl;
+    for(auto& block : __block_array) {
+        out_log << block->getName() << " "
+                << block->getX1() << " "
+                << block->getY1() << " "
+                << block->getX2() << " "
+                << block->getY2() << endl;
+    }
+}
