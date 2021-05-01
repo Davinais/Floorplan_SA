@@ -28,6 +28,7 @@ class Floorplanner {
             __best_tree_cost(0.0), __area_norm(0.0), __hpwl_norm(), __rng(12345) {
             parseBlk(in_blk);
             parseNet(in_net);
+            __outline_ratio = (double)__outline_width/(double)__outline_height;
         }
         ~Floorplanner() {}
 
@@ -63,6 +64,7 @@ class Floorplanner {
 
     private:
         double __alpha;
+        double __outline_ratio;
         int __outline_width;                // Outline Width
         int __outline_height;               // Outline Height
         int __num_blocks;                   // Blocks Num
@@ -84,7 +86,6 @@ class Floorplanner {
         /* Careful that the __best_tree_root cannot be traversed since the pointer it stored is pointed to original nodes */
         BStarTreeNode *__prev_tree_root;
         BStarTreeNode *__best_tree_root;
-        double __tree_cost;
         double __best_tree_cost;
 
         std::list<std::unique_ptr<Coordinate>> __horizontal_contour;

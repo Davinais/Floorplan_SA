@@ -368,11 +368,13 @@ double Floorplanner::calcHPWL() {
 }
 
 double Floorplanner::calcTreeCost() {
-    double penalty = checkLegal() ? 1.0 : 10.0;
+    double penalty_area = checkLegal() ? 0.0 : 2.0;
+    double penalty_ratio = checkLegal() ? 0.0 : 2.0;
+    double wl_concern = checkLegal() ? 1.0 : 0.0;
     double cost =
-        (__alpha * ((Block::getMaxX()*Block::getMaxY())/__area_norm)) +
-        ((1 - __alpha) * (calcHPWL()/__hpwl_norm));// +
-        //(penalty * abs((Block::getMaxX()/(double)Block::getMaxY()) - (__outline_width/(double)__outline_height)));
+        ((__alpha + penalty_area) * ((Block::getMaxX()*Block::getMaxY())/__area_norm)) +
+        (wl_concern * (1 - __alpha) * (calcHPWL()/__hpwl_norm)) +
+        (penalty_ratio * abs((Block::getMaxX()/(double)Block::getMaxY()) - __outline_ratio));
     return cost;
 }
 
@@ -393,10 +395,14 @@ void Floorplanner::simNormValue() {
 }
 
 void Floorplanner::simulateAnnealing() {
-    const int sim_time = 100;
+    const int sim_time = __num_blocks * 5;
     const double reduce_rate = 0.999;
     const double frozen_temp = 0.01;
-    double temperature = 1.0;
+    const double heat_temperature = 1.0;
+
+    int heat_time = 0;
+    double temperature = heat_temperature;
+
     uniform_real_distribution<double> dist_prob(0.0, 1.0);
     __best_tree_cost = calcTreeCost();
 
@@ -418,15 +424,21 @@ void Floorplanner::simulateAnnealing() {
                     __updateBestTree();
                 }
             }
-            // else if (dist_prob(__rng) > exp(-delta/temperature)) {
-            //     prev_cost = new_cost;
-            //     __updatePrevTree();
-            // }
+            else if (dist_prob(__rng) < exp(-delta/temperature)) {
+                prev_cost = new_cost;
+                __updatePrevTree();
+            }
             else {
                 __restorePrevTree();
             }
         }
-        temperature *= reduce_rate;
+        if (!checkLegal() && heat_time < 5) {
+            temperature = heat_temperature;
+            heat_time++;
+        }
+        else {
+            temperature *= reduce_rate;
+        }
     }
 }
 
