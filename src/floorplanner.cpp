@@ -534,7 +534,8 @@ void Floorplanner::printSummary(fstream& out_log, double exe_time) {
 void Floorplanner::plot(string file_name) {
 	string plot_dir = "plot";
     string cmd;
-    bool ret;
+    int ret;
+
     cmd = "mkdir -p " + plot_dir;
     ret = system(cmd.c_str());
 	char data_path[] = "/tmp/gnuplotXXXXXX";
@@ -543,33 +544,39 @@ void Floorplanner::plot(string file_name) {
 
 	char gp_path[] = "/tmp/gnuplotXXXXXX";
     int fd_gp = mkstemp(gp_path);
-    ofstream gnu_file(gp_path);
+    ofstream gp_file(gp_path);
     
-    // plot blocks
+    data_file << __outline_width << " " << __outline_height << endl;
+    gp_file << "set arrow from 0, " << __outline_height << " to "
+            << __outline_width << ", " << __outline_height << " nohead lc 3 lw 5" << endl;
+    gp_file << "set arrow from " << __outline_width << ", 0 to "
+            << __outline_width << ", " << __outline_height << " nohead lc 3 lw 5" << endl;
+    
     int i = 0;
-    for(auto& block : __block_array){
+    string fillcolor;
+    for(auto& block : __block_array) {
         size_t x1 = block->getX1();
         size_t x2 = block->getX2();
         size_t y1 = block->getY1();
         size_t y2 = block->getY2();
-        data_file << x1 << " " << y1 << endl;
-        data_file << x2 << " " << y2 << endl;
-        gnu_file << "set object "  <<  i+1  <<  " rect from " << x1 << "," << y1 << " to " << x2 << "," << y2 << " fillcolor lt 2 linewidth 3" << endl;
-        gnu_file << "set label '" << block->getName() << "' at " << (x1+x2)/2 << "," << (y1+y2)/2 << " front center font ',40'" << endl;
+        fillcolor = (x2 > __outline_width || y2 > __outline_height) ? "light-red" : "light-green" ;
+        data_file << x1 << " " << y1 << endl
+                  << x2 << " " << y2 << endl;
+        gp_file << "set object "  <<  i+1  <<  " rect from " << x1 << "," << y1
+                << " to " << x2 << "," << y2 << " fc rgb '" << fillcolor
+                << "' fs solid border lc rgb 'black' lw 3" << endl;
+        gp_file << "set label '" << block->getName() << "' at " << (x1+x2)/2.0
+                << ", " << (y1+y2)/2.0 << " front center font ',32'" << endl;
         i++;
     }
 
-    // plot outline
-    data_file<< __outline_width << " " << __outline_height << endl;
-    gnu_file << "set arrow from 0," << __outline_height << " to " << __outline_width << "," << __outline_height << " nohead lc 3 lw 5" << endl;
-    gnu_file << "set arrow from " << __outline_width << ",0 to " << __outline_width << "," << __outline_height << " nohead lc 3 lw 5" << endl;
-    gnu_file << "set term png size 2000,2000" <<endl;
-    gnu_file << "set output '" << plot_dir << "/" <<file_name << "'" << endl;
-    gnu_file << "plot '" << data_path << "' using 1:2 with points" << endl;
+    gp_file << "set term png size 2000, 2000" <<endl;
+    gp_file << "set output '" << plot_dir << "/" <<file_name << "'" << endl;
+    gp_file << "plot '" << data_path << "' using 1:2 with points" << endl;
     data_file.close();
-    gnu_file.close();
+    gp_file.close();
+
     cmd = "gnuplot " + string(gp_path);
-    
     ret = system(cmd.c_str());
     cout<< "Plot saved in " << plot_dir << "/" << file_name << endl;
     remove(data_path);
