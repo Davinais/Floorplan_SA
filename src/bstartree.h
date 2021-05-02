@@ -64,14 +64,14 @@ public:
         if(r->__left != nullptr && r->__left != r) { r->__left->replace_parent(r); }
         if(r->__right != nullptr && r->__right != r) { r->__right->replace_parent(r); }
 
-        check_valid(l);
-        check_valid(r);
-        check_valid(l->__parent);
-        check_valid(l->__left);
-        check_valid(l->__right);
-        check_valid(r->__parent);
-        check_valid(r->__left);
-        check_valid(r->__right);
+        // check_valid(l);
+        // check_valid(r);
+        // check_valid(l->__parent);
+        // check_valid(l->__left);
+        // check_valid(l->__right);
+        // check_valid(r->__parent);
+        // check_valid(r->__left);
+        // check_valid(r->__right);
     };
     static void check_valid(BStarTreeNode *node) {
         if (node == nullptr) return;
@@ -96,7 +96,7 @@ public:
         }
     }
     void isolate() {
-        assert(__left == nullptr || __right == nullptr);
+        // assert(__left == nullptr || __right == nullptr);
         BStarTreeNode *child = (__left != nullptr) ? __left : __right;
         if (__parent != nullptr) {
             __parent->replace_child(child, (__parent->__left == this) ? NodeChild::LEFT : NodeChild::RIGHT);
@@ -109,14 +109,14 @@ public:
         __right = nullptr;
     }
     void insert(BStarTreeNode *node, NodeChild child) {
-        assert(node->__parent == nullptr);
+        // assert(node->__parent == nullptr);
         node->__parent = this;
         if (child == NodeChild::LEFT) {
-            assert(__left == nullptr);
+            // assert(__left == nullptr);
             __left = node;
         }
         else {
-            assert(__right == nullptr);
+            // assert(__right == nullptr);
             __right = node;
         }
     }
